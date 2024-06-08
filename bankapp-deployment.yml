@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bankapi-deployment
+  labels:
+    app: bankapi
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: bankapi
+  template:
+    metadata:
+      labels:
+        app: bankapi
+    spec:
+      containers:
+        - name: bankapi
+          image: bank-api:1.0.25
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: db_root_password
+              valueFrom:
+                secretKeyRef:
+                  name: bankapi-secrets
+                  key: db_root_password
+            - name: db_name
+              value: bankapi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-service
+spec:
+  ports:
+  - port: 5000
+    protocol: TCP
+    targetPort: 5000
+  selector:
+    app: bankapi
+  type: LoadBalancer
