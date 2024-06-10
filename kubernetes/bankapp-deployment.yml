@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: bankapi
-          image: bank-api:1.0.25
+          image: bank-api:1.0.41
           imagePullPolicy: Never
           ports:
             - containerPort: 5000
