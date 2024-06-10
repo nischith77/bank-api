@@ -56,3 +56,19 @@ customer_id (string): The unique identifier for the customer. Must be 12 charact
 Response:
 
 [{"customer_id":"234567890124","profit_amount":"-16035.99","profit_percentage":"-71.16","total_final_amt":"6500.00","total_purchase_amt":"22535.99"}]
+
+Commands used to run in k8s
+
+eval $(minikube docker-env)
+Docker build -t bank-api:1.0.43 .
+kubectl apply -f k8s/bankapi-secrets.yml
+kubectl apply -f k8s/mysql-deployment.yml
+kubectl apply -f k8s/bankapp-deployment.yml
+kubectl apply -f k8s/mysql-pv.yml
+
+---
+
+localhost:5000/customer/234567890124
+localhost:5000/account/234567890124?account_type=investment
+localhost:5000/avg_interest_rate
+localhost:5000/investment_performance/234567890124
