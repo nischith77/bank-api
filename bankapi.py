@@ -39,7 +39,7 @@ def accounts(customer_id):
     if len(customer_id) != 12:
         return jsonify({"error": "Invalid customer ID length. Must be 12 characters."}), 400  # Bad Request
     
-    query_string=f"SELECT cast(account_id as char) acount_id,account_type,customer_id FROM accounts  WHERE customer_id= '{customer_id}'"
+    query_string=f"SELECT cast(account_id as char) account_id,account_type,customer_id FROM accounts  WHERE customer_id= '{customer_id}'"
     
     if(account_type and (account_type=='savings' or account_type=='investment' or account_type=='cash')) :
         query_string += f" AND account_type = '{account_type}'"
