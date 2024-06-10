@@ -30,4 +30,5 @@ def execute_query(conn, query):
 
     finally:
         if cursor:
-            cursor.close()    
+            cursor.close()  
+            conn.close()
