@@ -2,19 +2,8 @@ import os
 from flask import jsonify, request, Flask
 from flaskext.mysql import MySQL
 from utils.query_execute import execute_query
-
-app = Flask(__name__)
-mysql = MySQL()
-
-
-# MySQL configurations
-app.config["MYSQL_DATABASE_USER"] = "root"
-app.config["MYSQL_DATABASE_PASSWORD"] = os.getenv("db_root_password")
-app.config["MYSQL_DATABASE_DB"] = os.getenv("db_name")
-app.config["MYSQL_DATABASE_HOST"] = os.getenv("MYSQL_SERVICE_HOST")
-app.config["MYSQL_DATABASE_PORT"] = int(os.getenv("MYSQL_SERVICE_PORT"))
-mysql.init_app(app)
-
+from config.app import app
+from config.config import mysql
 
 @app.route("/customer/<customer_id>", methods=["GET"])
 def user(customer_id):
