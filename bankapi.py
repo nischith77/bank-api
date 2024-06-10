@@ -1,12 +1,7 @@
 import os
 from flask import jsonify, request, Flask
 from flaskext.mysql import MySQL
-import logging
-
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
-
-# Create a logger object
-logger = logging.getLogger(__name__)
+from utils.query_execute import execute_query
 
 app = Flask(__name__)
 mysql = MySQL()
@@ -44,8 +39,6 @@ def accounts(customer_id):
     if(account_type and (account_type=='savings' or account_type=='investment' or account_type=='cash')) :
         query_string += f" AND account_type = '{account_type}'"
 
-        logger.info(query_string)
-      
     conn = mysql.connect()
     response=execute_query(conn,query_string)
     return response
@@ -68,34 +61,7 @@ def investment_performance(customer_id):
     conn = mysql.connect()
     response=execute_query(conn,query_string)
     return response
-    
-def execute_query(conn, query):
-    cursor = None
-    try:
-        conn = mysql.connect()
-        cursor = conn.cursor()
-        cursor.execute(query)
-        row = cursor.description  # Get column descriptions
-        column_names = [col[0] for col in row]  # Extract column names
-        data = cursor.fetchall()
         
-        if not data:  # Check for empty result set
-         return jsonify({"message": "No data found"}), 404  # Not Found
-
-        response_data = [dict(zip(column_names, account)) for account in data]
-        return jsonify(response_data)
-    
-    except Exception as e:
-        # Log the error for debugging purposes
-        logger.error(f"An error occurred: {str(e)}")
-
-        # Return a generic error message to the client 
-        return jsonify({"error": "Internal server error"}), 500  # Internal Server Error
-
-    finally:
-        if cursor:
-            cursor.close()    
-    
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
