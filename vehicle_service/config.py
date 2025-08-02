@@ -9,20 +9,18 @@ class Settings(BaseSettings):
         env="DATABASE_URL"
     )
     
-    # Redis settings
-    redis_url: str = Field(
-        default="redis://localhost:6379",
-        env="REDIS_URL"
-    )
-    redis_host: str = Field(default="localhost", env="REDIS_HOST")
-    redis_port: int = Field(default=6379, env="REDIS_PORT")
-    redis_db: int = Field(default=0, env="REDIS_DB")
-    redis_password: Optional[str] = Field(default=None, env="REDIS_PASSWORD")
+    # GCP Pub/Sub settings
+    gcp_project_id: str = Field(default="your-project-id", env="GCP_PROJECT_ID")
+    gcp_credentials_path: Optional[str] = Field(default=None, env="GOOGLE_APPLICATION_CREDENTIALS")
     
-    # Pub/Sub settings
-    vehicle_telemetry_channel: str = Field(default="vehicle:telemetry", env="TELEMETRY_CHANNEL")
-    vehicle_alerts_channel: str = Field(default="vehicle:alerts", env="ALERTS_CHANNEL")
-    vehicle_updates_channel: str = Field(default="vehicle:updates", env="UPDATES_CHANNEL")
+    # Pub/Sub Topics and Subscriptions
+    vehicle_telemetry_topic: str = Field(default="vehicle-telemetry", env="TELEMETRY_TOPIC")
+    vehicle_alerts_topic: str = Field(default="vehicle-alerts", env="ALERTS_TOPIC")
+    vehicle_updates_topic: str = Field(default="vehicle-updates", env="UPDATES_TOPIC")
+    
+    vehicle_telemetry_subscription: str = Field(default="vehicle-telemetry-sub", env="TELEMETRY_SUBSCRIPTION")
+    vehicle_alerts_subscription: str = Field(default="vehicle-alerts-sub", env="ALERTS_SUBSCRIPTION")
+    vehicle_updates_subscription: str = Field(default="vehicle-updates-sub", env="UPDATES_SUBSCRIPTION")
     
     # Consumer settings
     consumer_batch_size: int = Field(default=100, env="CONSUMER_BATCH_SIZE")
