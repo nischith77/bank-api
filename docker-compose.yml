@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: vehicle_postgres
+    environment:
+      POSTGRES_DB: vehicle_data
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - vehicle_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: vehicle_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - vehicle_network
+
+  vehicle_consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.vehicle
+    container_name: vehicle_consumer
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/vehicle_data
+      REDIS_URL: redis://redis:6379
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./vehicle_service:/app
+    networks:
+      - vehicle_network
+    restart: unless-stopped
+
+  vehicle_publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile.vehicle
+    container_name: vehicle_publisher
+    environment:
+      REDIS_URL: redis://redis:6379
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - redis
+    volumes:
+      - ./vehicle_service:/app
+    command: python publisher.py
+    networks:
+      - vehicle_network
+
+  vehicle_api:
+    build:
+      context: .
+      dockerfile: Dockerfile.vehicle
+    container_name: vehicle_api
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/vehicle_data
+      REDIS_URL: redis://redis:6379
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./vehicle_service:/app
+    command: python api.py
+    networks:
+      - vehicle_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  vehicle_network:
+    driver: bridge
