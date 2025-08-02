@@ -1,0 +1,94 @@
+spring:
+  application:
+    name: vehicle-data-service
+  
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/vehicle_data}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: ${SQL_DEBUG:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID:your-project-id}
+      credentials:
+        location: ${GOOGLE_APPLICATION_CREDENTIALS:}
+      pubsub:
+        subscriber:
+          max-ack-extension-period: 600s
+          parallel-pull-count: 1
+          max-inbound-message-size: 20971520
+          flow-control:
+            max-outstanding-element-count: 1000
+            max-outstanding-request-bytes: 104857600
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    pubsub:
+      enabled: true
+
+logging:
+  level:
+    com.vehicle.service: ${LOG_LEVEL:INFO}
+    org.springframework.cloud.gcp.pubsub: ${PUBSUB_LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${SQL_DEBUG:false}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Custom application properties
+vehicle:
+  pubsub:
+    topics:
+      telemetry: ${TELEMETRY_TOPIC:vehicle-telemetry}
+      alerts: ${ALERTS_TOPIC:vehicle-alerts}
+      updates: ${UPDATES_TOPIC:vehicle-updates}
+    subscriptions:
+      telemetry: ${TELEMETRY_SUBSCRIPTION:vehicle-telemetry-sub}
+      alerts: ${ALERTS_SUBSCRIPTION:vehicle-alerts-sub}
+      updates: ${UPDATES_SUBSCRIPTION:vehicle-updates-sub}
+  
+  consumer:
+    batch-size: ${CONSUMER_BATCH_SIZE:100}
+    timeout-seconds: ${CONSUMER_TIMEOUT:5}
+    max-retry-attempts: ${MAX_RETRY_ATTEMPTS:3}
+    retry-delay-seconds: ${RETRY_DELAY:1}
+
+# API Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
