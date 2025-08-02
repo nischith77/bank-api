@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: vehicle_postgres_java
+    environment:
+      POSTGRES_DB: vehicle_data
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - vehicle_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  vehicle_service:
+    build:
+      context: ./vehicle-java-service
+      dockerfile: Dockerfile
+    container_name: vehicle_java_service
+    environment:
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/vehicle_data
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=password
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-your-project-id}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+      - TELEMETRY_TOPIC=${TELEMETRY_TOPIC:-vehicle-telemetry}
+      - ALERTS_TOPIC=${ALERTS_TOPIC:-vehicle-alerts}
+      - UPDATES_TOPIC=${UPDATES_TOPIC:-vehicle-updates}
+      - TELEMETRY_SUBSCRIPTION=${TELEMETRY_SUBSCRIPTION:-vehicle-telemetry-sub}
+      - ALERTS_SUBSCRIPTION=${ALERTS_SUBSCRIPTION:-vehicle-alerts-sub}
+      - UPDATES_SUBSCRIPTION=${UPDATES_SUBSCRIPTION:-vehicle-updates-sub}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - SQL_DEBUG=${SQL_DEBUG:-false}
+      - SERVER_PORT=8080
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:ro
+    networks:
+      - vehicle_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # GCP Pub/Sub Emulator for local development
+  pubsub_emulator:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    container_name: pubsub_emulator
+    command: >
+      bash -c "
+        gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 &
+        sleep 10 &&
+        export PUBSUB_EMULATOR_HOST=localhost:8085 &&
+        gcloud pubsub topics create vehicle-telemetry --project=test-project &&
+        gcloud pubsub topics create vehicle-alerts --project=test-project &&
+        gcloud pubsub topics create vehicle-updates --project=test-project &&
+        gcloud pubsub subscriptions create vehicle-telemetry-sub --topic=vehicle-telemetry --project=test-project &&
+        gcloud pubsub subscriptions create vehicle-alerts-sub --topic=vehicle-alerts --project=test-project &&
+        gcloud pubsub subscriptions create vehicle-updates-sub --topic=vehicle-updates --project=test-project &&
+        tail -f /dev/null
+      "
+    ports:
+      - "8085:8085"
+    networks:
+      - vehicle_network
+    environment:
+      - PUBSUB_EMULATOR_HOST=0.0.0.0:8085
+
+volumes:
+  postgres_data:
+
+networks:
+  vehicle_network:
+    driver: bridge

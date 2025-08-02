@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: vehicle_postgres
+    environment:
+      POSTGRES_DB: vehicle_data
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - vehicle_network
+
+  vehicle_consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.vehicle
+    container_name: vehicle_consumer
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/vehicle_data
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-your-project-id}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      TELEMETRY_TOPIC: ${TELEMETRY_TOPIC:-vehicle-telemetry}
+      ALERTS_TOPIC: ${ALERTS_TOPIC:-vehicle-alerts}
+      UPDATES_TOPIC: ${UPDATES_TOPIC:-vehicle-updates}
+      TELEMETRY_SUBSCRIPTION: ${TELEMETRY_SUBSCRIPTION:-vehicle-telemetry-sub}
+      ALERTS_SUBSCRIPTION: ${ALERTS_SUBSCRIPTION:-vehicle-alerts-sub}
+      UPDATES_SUBSCRIPTION: ${UPDATES_SUBSCRIPTION:-vehicle-updates-sub}
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - postgres
+    volumes:
+      - ./vehicle_service:/app
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:ro
+    networks:
+      - vehicle_network
+    restart: unless-stopped
+
+  vehicle_publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile.vehicle
+    container_name: vehicle_publisher
+    environment:
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-your-project-id}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      TELEMETRY_TOPIC: ${TELEMETRY_TOPIC:-vehicle-telemetry}
+      ALERTS_TOPIC: ${ALERTS_TOPIC:-vehicle-alerts}
+      UPDATES_TOPIC: ${UPDATES_TOPIC:-vehicle-updates}
+      PYTHONUNBUFFERED: 1
+    volumes:
+      - ./vehicle_service:/app
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:ro
+    command: python publisher.py
+    networks:
+      - vehicle_network
+
+  vehicle_api:
+    build:
+      context: .
+      dockerfile: Dockerfile.vehicle
+    container_name: vehicle_api
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/vehicle_data
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-your-project-id}
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./vehicle_service:/app
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:ro
+    command: python api.py
+    networks:
+      - vehicle_network
+
+volumes:
+  postgres_data:
+
+networks:
+  vehicle_network:
+    driver: bridge
