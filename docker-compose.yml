@@ -16,17 +16,6 @@ services:
     networks:
       - vehicle_network
 
-  redis:
-    image: redis:7-alpine
-    container_name: vehicle_redis
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    networks:
-      - vehicle_network
-
   vehicle_consumer:
     build:
       context: .
@@ -34,13 +23,20 @@ services:
     container_name: vehicle_consumer
     environment:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/vehicle_data
-      REDIS_URL: redis://redis:6379
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-your-project-id}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      TELEMETRY_TOPIC: ${TELEMETRY_TOPIC:-vehicle-telemetry}
+      ALERTS_TOPIC: ${ALERTS_TOPIC:-vehicle-alerts}
+      UPDATES_TOPIC: ${UPDATES_TOPIC:-vehicle-updates}
+      TELEMETRY_SUBSCRIPTION: ${TELEMETRY_SUBSCRIPTION:-vehicle-telemetry-sub}
+      ALERTS_SUBSCRIPTION: ${ALERTS_SUBSCRIPTION:-vehicle-alerts-sub}
+      UPDATES_SUBSCRIPTION: ${UPDATES_SUBSCRIPTION:-vehicle-updates-sub}
       PYTHONUNBUFFERED: 1
     depends_on:
       - postgres
-      - redis
     volumes:
       - ./vehicle_service:/app
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:ro
     networks:
       - vehicle_network
     restart: unless-stopped
@@ -51,12 +47,15 @@ services:
       dockerfile: Dockerfile.vehicle
     container_name: vehicle_publisher
     environment:
-      REDIS_URL: redis://redis:6379
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-your-project-id}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      TELEMETRY_TOPIC: ${TELEMETRY_TOPIC:-vehicle-telemetry}
+      ALERTS_TOPIC: ${ALERTS_TOPIC:-vehicle-alerts}
+      UPDATES_TOPIC: ${UPDATES_TOPIC:-vehicle-updates}
       PYTHONUNBUFFERED: 1
-    depends_on:
-      - redis
     volumes:
       - ./vehicle_service:/app
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:ro
     command: python publisher.py
     networks:
       - vehicle_network
@@ -68,22 +67,21 @@ services:
     container_name: vehicle_api
     environment:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/vehicle_data
-      REDIS_URL: redis://redis:6379
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-your-project-id}
       PYTHONUNBUFFERED: 1
     depends_on:
       - postgres
-      - redis
     ports:
       - "8000:8000"
     volumes:
       - ./vehicle_service:/app
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:ro
     command: python api.py
     networks:
       - vehicle_network
 
 volumes:
   postgres_data:
-  redis_data:
 
 networks:
   vehicle_network:
